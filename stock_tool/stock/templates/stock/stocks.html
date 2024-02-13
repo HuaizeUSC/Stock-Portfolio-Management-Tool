@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stocks</title>
+  </head>
+  <body>
+    {% include 'navbar.html' %}
+    <a href="{% url 'update' %}">Update Current Stocks</a>
+
+    <h1>Stock Search</h1>
+    <form action="{% url 'stocks' %}" method="GET">
+      <input type="text" name="symbol" placeholder="Enter stock symbol" />
+      <button type="submit">Search</button>
+    </form>
+    {% if error %}
+    <p>{{ error }}</p>
+    {% endif %}
+
+    <h1>Stock List</h1>
+    <ul>
+      {% for stock in stocks %}
+      <li><a href="{% url 'stock' stock.symbol %}">{{ stock.symbol }}: {{stock.name}}</a></li>
+      {% endfor %}
+    </ul>
+  </body>
+</html>

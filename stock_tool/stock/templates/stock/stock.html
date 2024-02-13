@@ -1,0 +1,39 @@
+<!-- stock.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Stock Detail</title>
+  </head>
+  <body>
+    {% include 'navbar.html' %}
+
+    <h1>Stock Detail</h1>
+    {% if profile %}
+    <a href="{% url 'favor' stock.symbol %}">Add to favorite</a>
+    {% endif %}
+    <ul>
+      <li><strong>Symbol:</strong> {{ stock.symbol }}</li>
+      <li><strong>Name:</strong> {{ stock.name }}</li>
+      <li><strong>Location:</strong> {{ stock.location }}</li>
+      <li><strong>Description:</strong> {{ stock.description }}</li>
+      <li><strong>Homepage:</strong> <a href="{{ stock.homepage }}">{{ stock.homepage }}</a></li>
+      <li><strong>Category:</strong> {{ stock.companytype }}</li>
+      <li><strong>Icon URL:</strong> <a href="{{ stock.iconurl }}">{{ stock.iconurl }}</a></li>
+      <li><strong>Latest Update Time:</strong> {{ stock.latestupdatetime}}</li>
+      <li><strong>Latest low Price:</strong> {{ stock.latestlowprice }}</li>
+      <li><strong>Latest high Price:</strong> {{ stock.latesthighprice }}</li>
+      <li><strong>Latest open Price:</strong> {{ stock.latestopenprice }}</li>
+      <li><strong>Latest close Price:</strong> {{ stock.latestcloseprice }}</li>
+    </ul>
+
+    <h2>Stock Prices</h2>
+    <ul>
+      {% for stock_price in prices %}
+      <li>{{ stock_price.timestamp }}: Low - {{ stock_price.lowprice }}, High - {{ stock_price.highprice }}, Open - {{ stock_price.openprice }}, Close - {{ stock_price.closeprice }}</li>
+      <a href="{% url 'stockprice' stock.symbol stock_price.timestamp %}">View</a>
+      {% endfor %}
+    </ul>
+  </body>
+</html>

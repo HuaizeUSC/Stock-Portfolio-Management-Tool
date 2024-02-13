@@ -1,0 +1,8 @@
+<a href="{% url 'stocks' %}">Home</a> | {% if profile %}
+<p>Hello, {{ profile.username }}</p>
+<a href="{% url 'logout' %}">Logout</a>
+<a href="{% url 'profile' profile.id %}">Your Profile</a>
+{% else %}
+<a href="{% url 'login' %}">Login</a> | <a href="{% url 'register' %}">Register</a>
+{% endif %}
+<br />

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profile</title>
+  </head>
+  <body>
+    {% include 'navbar.html' %}
+    <h1>User Profile</h1>
+    <h2>{{ profile.username }}</h2>
+    <p>Email: {{ profile.email }}</p>
+    <p>Created: {{ profile.created }}</p>
+
+    <h2>Trades</h2>
+    <ul>
+      {% for trade in trades %}
+      <li>{{ trade.stockinfo.stock.symbol }} - Quantity: {{ trade.quantity }}, Price: {{ trade.stockinfo.closeprice }}, Timestamp: {{ trade.stockinfo.timestamp }}</li>
+      {% endfor %}
+    </ul>
+
+    <h2>Favorite Stocks</h2>
+    <ul>
+      {% for favorite_stock in favors %}
+      <li>{{ favorite_stock.stock.symbol }}</li>
+      {% endfor %}
+    </ul>
+
+    <h2>Virtual Funds</h2>
+    <p>Balance: {{ funds.balance }}</p>
+  </body>
+</html>
