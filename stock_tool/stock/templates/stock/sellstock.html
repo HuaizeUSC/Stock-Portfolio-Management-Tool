@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sell Stock</title>
+  </head>
+  <body>
+    {% include 'navbar.html' %}
+    <ul>
+      <li><strong>Symbol:</strong> {{ price.stock.symbol }}</li>
+      <li><strong>Open:</strong> {{ price.openprice }}</li>
+      <li><strong>Close:</strong> {{ price.closeprice }}</li>
+      <li><strong>High:</strong> {{ price.highprice }}</li>
+      <li><strong>Low:</strong> {{ price.lowprice }}</a></li>
+      <li><strong>Time:</strong> {{ price.timestamp }}</li>
+    </ul>
+    <form action="{% url 'sellstock' price.stock.symbol price.timestamp %}" method="GET">
+        {% csrf_token %}
+        <label for="quantity">Quantity:</label>
+        <input type="number" id="quantity" name="quantity" step="1" required>
+        <button type="submit">Buy</button>
+    </form>
+  </body>
+</html>

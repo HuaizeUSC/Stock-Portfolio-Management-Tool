@@ -16,7 +16,6 @@ from pathlib import Path
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.1/howto/deployment/checklist/
 
@@ -28,7 +27,6 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
 
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -39,7 +37,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     'stock.apps.StockConfig',
-    'user.apps.UserConfig',
+    'user.apps.UserConfig'
 ]
 
 MIDDLEWARE = [
@@ -57,7 +55,7 @@ ROOT_URLCONF = "stock_tool.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [os.path.join(BASE_DIR, 'templates'),],
+        "DIRS": [os.path.join(BASE_DIR, 'templates'), ],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -72,17 +70,41 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "stock_tool.wsgi.application"
 
-
 # Database
 # https://docs.djangoproject.com/en/4.1/ref/settings/#databases
 
+
 DATABASES = {
+    'mysql1': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'stock',
+        'USER': 'avnadmin',
+        'PASSWORD': 'AVNS_D7GaJgCDbIJXX6iLwlb',
+        'HOST': 'mysql-9fe7605-dsci551.a.aivencloud.com',
+        'PORT': '14855',
+    },
+    'mysql2': {
+        'ENGINE': 'django.db.ba'
+                  'ckends.mysql',
+        'NAME': 'defaultdb',
+        'USER': 'avnadmin',
+        'PASSWORD': 'AVNS_2Kxk7MGwQD3GWMfcN76',
+        'HOST': 'mysql-392b47df-sznxlhc0205-3d05.a.aivencloud.com',
+        'PORT': '23980',
+    },
+    'mysql3': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'defaultdb',
+        'USER': 'avnadmin',
+        'PASSWORD': 'AVNS_4R20JM0kjlERekdy1KY',
+        'HOST': 'mysql-stock-distribute-database-stock-distribute-database.a.aivencloud.com',
+        'PORT': '21086',
+    },
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
-    }
+    },
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/4.1/ref/settings/#auth-password-validators
@@ -102,7 +124,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/4.1/topics/i18n/
 
@@ -113,7 +134,6 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 
 USE_TZ = True
-
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.1/howto/static-files/

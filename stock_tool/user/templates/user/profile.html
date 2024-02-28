@@ -15,18 +15,23 @@
     <h2>Trades</h2>
     <ul>
       {% for trade in trades %}
-      <li>{{ trade.stockinfo.stock.symbol }} - Quantity: {{ trade.quantity }}, Price: {{ trade.stockinfo.closeprice }}, Timestamp: {{ trade.stockinfo.timestamp }}</li>
+      <li>{{ trade.stockinfo.stock.symbol }} - Quantity: {{ trade.quantity }}, Price: {{ trade.stockinfo.closeprice }}, Timestamp: {{ trade.stockinfo.timestamp }}
+        &nbsp <a href="">Sell</a>
+      </li>
       {% endfor %}
     </ul>
 
     <h2>Favorite Stocks</h2>
     <ul>
       {% for favorite_stock in favors %}
-      <li>{{ favorite_stock.stock.symbol }}</li>
+      <li>{{ favorite_stock.stock.symbol }}<a href="{% url 'deleteFavor' profile.id favorite_stock.stock.symbol %}">delete</a></li>
       {% endfor %}
     </ul>
 
     <h2>Virtual Funds</h2>
     <p>Balance: {{ funds.balance }}</p>
+
+    <br/>
+    <a style="background-color:red;" href="{% url 'deregister' profile.id profile.username %}">Deregister your acount</a>
   </body>
 </html>

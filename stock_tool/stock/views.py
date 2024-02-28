@@ -1,22 +1,34 @@
 from datetime import datetime
+from decimal import Decimal
 from os import execv
+
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError
 from django.shortcuts import render, redirect
-from more_itertools import quantify
-from pandas import Timestamp
 from .models import Stock, StockPrice
 import requests
-from django.utils import timezone
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth.decorators import login_required
-from user.models import Profile, Trade, FavoriteStock
+from user.models import Profile, Trade, FavoriteStock, VirtualFunds
+
 # Create your views here.
 ALPHAVANTAGE_API = 'ATY7R49Z6YQ679WR'
 POLYGON_API = '7sDFU1hnKlUhRDSY7kKTmE4hMwrfpyLo'
-NASDAQ100 = ['AAL', 'AAPL', 'ADBE', 'ADI', 'ADP', 'ADSK', 'AKAM', 'ALXN', 'AMAT', 'AMGN', 'AMZN', 'AVGO', 'BBBY', 'BIDU', 'BIIB', 'BMRN', 'CA', 'CHKP', 'CHTR', 'CMCSA', 'COST', 'CSCO', 'CSX', 'CTSH', 'DLTR', 'EA', 'EBAY', 'EXPE', 'FAST', 'FOX', 'FOXA', 'GILD', 'GOOGL', 'HSIC', 'ILMN', 'INCY', 'INTC', 'INTU', 'ISRG', 'JD', 'KHC',
-             'LBTYA', 'LBTYK', 'LLTC', 'LRCX', 'MAR', 'MAT', 'MCHP', 'MDLZ', 'MNST', 'MSFT', 'MU', 'NCLH', 'NFLX', 'NTAP', 'NTES', 'NVDA', 'NXPI', 'ORLY', 'PAYX', 'PCAR', 'PYPL', 'QCOM', 'REGN', 'ROST', 'SBAC', 'SBUX', 'SIRI', 'SRCL', 'STX', 'SWKS', 'TMUS', 'TRIP', 'TSCO', 'TSLA', 'TXN', 'ULTA', 'VOD', 'VRSK', 'VRTX', 'WBA', 'WDC', 'XRAY']
+NASDAQ100 = ['AAL', 'AAPL', 'ADBE', 'ADI', 'ADP', 'ADSK', 'AKAM', 'ALXN', 'AMAT', 'AMGN', 'AMZN', 'AVGO', 'BBBY',
+             'BIDU', 'BIIB', 'BMRN', 'CA', 'CHKP', 'CHTR', 'CMCSA', 'COST', 'CSCO', 'CSX', 'CTSH', 'DLTR', 'EA', 'EBAY',
+             'EXPE', 'FAST', 'FOX', 'FOXA', 'GILD', 'GOOGL', 'HSIC', 'ILMN', 'INCY', 'INTC', 'INTU', 'ISRG', 'JD',
+             'KHC',
+             'LBTYA', 'LBTYK', 'LLTC', 'LRCX', 'MAR', 'MAT', 'MCHP', 'MDLZ', 'MNST', 'MSFT', 'MU', 'NCLH', 'NFLX',
+             'NTAP', 'NTES', 'NVDA', 'NXPI', 'ORLY', 'PAYX', 'PCAR', 'PYPL', 'QCOM', 'REGN', 'ROST', 'SBAC', 'SBUX',
+             'SIRI', 'SRCL', 'STX', 'SWKS', 'TMUS', 'TRIP', 'TSCO', 'TSLA', 'TXN', 'ULTA', 'VOD', 'VRSK', 'VRTX', 'WBA',
+             'WDC', 'XRAY']
+databases = ['mysql1', 'mysql2', 'mysql3']
+
 
 # hidden function only vistied by urls
+
+def get_database(string):
+    return databases[ord(string[0]) % len(databases)]
 
 
 def initialize_view(request):
@@ -37,14 +49,15 @@ def update_view(request):
 
 def initialize_system():
     endday = datetime.now()
-    startday = endday-relativedelta(years=2)
+    startday = endday - relativedelta(years=2)
     startday, endday = startday.strftime(
         "%Y-%m-%d"), endday.strftime("%Y-%m-%d")
     for symbol in NASDAQ100:
         print(symbol)
+        db = get_database(symbol)
         if (create_stock(symbol)):
             print(symbol)
-            stock_model = Stock.objects.get(symbol=symbol)
+            stock_model = Stock.objects.using(db).get(symbol=symbol)
             response_newstock = requests.get(
                 url=f"https://api.polygon.io/v2/aggs/ticker/{symbol}/range/1/day/{startday}/{endday}?adjusted=true&sort=asc&apiKey=7sDFU1hnKlUhRDSY7kKTmE4hMwrfpyLo"
             )
@@ -56,7 +69,7 @@ def initialize_system():
 
 def create_2_year_history(stock):
     endday = datetime.now()
-    startday = endday-relativedelta(years=2)
+    startday = endday - relativedelta(years=2)
     startday, endday = startday.strftime(
         "%Y-%m-%d"), endday.strftime("%Y-%m-%d")
     response_newstock = requests.get(
@@ -69,27 +82,28 @@ def create_2_year_history(stock):
 
 
 def update_stock_client():
-    stocks = Stock.objects.all()
-    endday = datetime.now().strftime('%Y-%m-%d')
-    for st in stocks:
-        timestamp = st.latestupdatetime//10**9
-        startday = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
-        response_newstock = requests.get(
-            url=f"https://api.polygon.io/v2/aggs/ticker/{st.symbol}/range/1/day/{startday}/{endday}?adjusted=true&sort=asc&apiKey=7sDFU1hnKlUhRDSY7kKTmE4hMwrfpyLo"
-        )
-        if response_newstock.status_code == 200:
-            aggregates = response_newstock.json()['results']
-            print(aggregates)
-            for dayinfo in aggregates:
-                create_time_stamp(st, dayinfo)
+    for db in databases:
+        stocks = Stock.objects.using(db).all()
+        endday = datetime.now().strftime('%Y-%m-%d')
+        for st in stocks:
+            timestamp = st.latestupdatetime // 10 ** 9
+            startday = datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d')
+            response_newstock = requests.get(
+                url=f"https://api.polygon.io/v2/aggs/ticker/{st.symbol}/range/1/day/{startday}/{endday}?adjusted=true&sort=asc&apiKey=7sDFU1hnKlUhRDSY7kKTmE4hMwrfpyLo"
+            )
+            if response_newstock.status_code == 200:
+                aggregates = response_newstock.json()['results']
+                print(aggregates)
+                for dayinfo in aggregates:
+                    create_time_stamp(st, dayinfo)
     return redirect('stocks')
 
 
 def create_time_stamp(stock_model, st):
     timestamp_ms = st['t']
-
+    db = get_database(stock_model.symbol)
     try:
-        existing_record = StockPrice.objects.get(
+        existing_record = StockPrice.objects.using(db).get(
             stock=stock_model, timestamp=timestamp_ms)
         existing_record.lowprice = st['l']
         existing_record.highprice = st['h']
@@ -97,7 +111,7 @@ def create_time_stamp(stock_model, st):
         existing_record.closeprice = st['c']
         existing_record.save()
     except StockPrice.DoesNotExist:
-        StockPrice.objects.create(
+        StockPrice.objects.using(db).create(
             stock=stock_model,
             lowprice=st['l'],
             highprice=st['h'],
@@ -110,12 +124,12 @@ def create_time_stamp(stock_model, st):
 
 
 def create_stock(symbol):
+    db = get_database(symbol)
     try:
-        existing_stock = Stock.objects.get(symbol=symbol)
+        existing_stock = Stock.objects.using(db).get(symbol=symbol)
         existing_stock.save()
         return True
     except Stock.DoesNotExist:
-
         response = requests.get(
             f"https://api.polygon.io/v3/reference/tickers/{symbol}", params={"apiKey": POLYGON_API})
         if response.status_code == 200:
@@ -129,7 +143,8 @@ def create_stock(symbol):
                 dailyjson = daily['day']
                 # get basic information
                 stock_info = responsejson['results']
-                stock = Stock.objects.create(
+                print(daily['updated'])
+                stock = Stock.objects.using(db).create(
                     symbol=stock_info.get('ticker', ''),
                     name=stock_info.get('name', ''),
                     location=stock_info.get('locale', ''),
@@ -154,60 +169,78 @@ def create_stock(symbol):
 def stocks(request):
     if request.user.is_authenticated:
         try:
-            profile = Profile.objects.get(user=request.user)
+            profile = Profile.objects.using(get_database(request.user.username)).using(
+                get_database(request.user.username)).get(username=request.user.username)
         except Profile.DoesNotExist:
             profile = None
     else:
         profile = None
-    context = {'stocks': Stock.objects.all().order_by(
-        '-latestcloseprice'), 'profile': profile, 'error': None}
+    context = {'stocks': get_combined_queryset(), 'profile': profile, 'error': None}
     # if request.method == 'POST':
-
     if request.method == 'GET':
         symbol = request.GET.get('symbol')
         if symbol:
             symbol = symbol.upper()
             try:
-                stock = Stock.objects.get(symbol=symbol)
+                db = get_database(symbol)
+                stock = Stock.objects.using(db).get(symbol=symbol)
                 return redirect('stock', symbol=symbol)
             except Stock.DoesNotExist:
                 if create_stock(symbol):
                     return redirect('stock', symbol=symbol)
                 else:
                     context['error'] = f'Stock with symbol {symbol} not found.'
-                    context['stocks'] = Stock.objects.all().order_by(
-                        '-latestcloseprice')
+                    # context['stocks'] = Stock.objects.all().order_by(
+                    #     '-latestcloseprice')
                     return render(request, 'stock/stocks.html', context)
 
     return render(request, 'stock/stocks.html', context)
 
 
+def get_combined_queryset():
+    querysets = []
+    for db in databases:
+        queryset = Stock.objects.using(db).all().order_by('-latestcloseprice')
+        querysets += list(queryset)
+    return querysets
+
+
 def stock(request, symbol):
     if request.user.is_authenticated:
         try:
-            profile = Profile.objects.get(user=request.user)
+            db = get_database(request.user.username)
+            profile = Profile.objects.using(db).get(username=request.user.username)
         except Profile.DoesNotExist:
             profile = None
     else:
         profile = None
     try:
-        stock = Stock.objects.get(symbol=symbol)
-        return render(request, 'stock/stock.html', {'stock': stock, 'prices': StockPrice.objects.filter(stock=stock).order_by('-timestamp'), 'profile': profile})
+        db = get_database(symbol)
+        stock = Stock.objects.using(db).get(symbol=symbol)
+        return render(request, 'stock/stock.html',
+                      {'stock': stock,
+                       'prices': StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp'),
+                       'profile': profile})
     except Stock.DoesNotExist:
+        db = get_database(symbol)
         error = f'Stock with symbol {symbol} not found.'
-        return render(request, 'stock/stocks.html', {'error': error, 'stocks': Stock.objects.all().order_by('-latestcloseprice'), 'profile': profile})
+        return render(request, 'stock/stocks.html',
+                      {'error': error, 'stocks': Stock.objects.using(db).all().order_by('-latestcloseprice'),
+                       'profile': profile})
 
 
 def stockprice(request, symbol, timestamp):
     if request.user.is_authenticated:
         try:
-            profile = Profile.objects.get(user=request.user)
+            db = get_database(request.user.username)
+            profile = Profile.objects.using(db).get(username=request.user.username)
         except Profile.DoesNotExist:
             profile = None
     else:
         profile = None
-    stock = Stock.objects.get(symbol=symbol)
-    stockprice = StockPrice.objects.get(stock=stock, timestamp=timestamp)
+    db = get_database(symbol)
+    stock = Stock.objects.using(db).get(symbol=symbol)
+    stockprice = StockPrice.objects.using(db).get(stock=stock, timestamp=timestamp)
     return render(request, 'stock/stockprice.html', {
         'profile': profile, 'price': stockprice
     })
@@ -216,10 +249,11 @@ def stockprice(request, symbol, timestamp):
 @login_required(login_url='login')
 def favor(request, symbol):
     print(21)
-    stock = Stock.objects.get(symbol=symbol)
-    if not FavoriteStock.objects.filter(owner=request.user.profile, stock=stock).exists():
-        stock = Stock.objects.get(symbol=symbol)
-        favorite_stock = FavoriteStock.objects.create(
+    db = get_database(symbol)
+    stock = Stock.objects.using(db).get(symbol=symbol)
+    dbUser = get_database(request.user.username)
+    if not FavoriteStock.objects.using(dbUser).filter(owner=request.user.profile, stock=stock).exists():
+        FavoriteStock.objects.using(dbUser).create(
             owner=request.user.profile,
             stock=stock
         )
@@ -228,13 +262,23 @@ def favor(request, symbol):
 
 @login_required(login_url='login')
 def buystock(request, symbol, timestamp):
-    stock = Stock.objects.get(symbol=symbol)
-    profile = Profile.objects.get(user=request.user)
-    stockprice = StockPrice.objects.get(stock=stock, timestamp=timestamp)
+    db = get_database(symbol)
+    stock = Stock.objects.using(db).get(symbol=symbol)
+    dbUser = get_database(request.user.username)
+    profile = Profile.objects.using(dbUser).get(user=request.user)
+    stockprice = StockPrice.objects.using(db).get(stock=stock, timestamp=timestamp)
     if request.method == 'GET':
         quantity = request.GET.get('quantity')
-        Trade.objects.create(
-            owner=profile, stockinfo=stockprice, quantity=quantity)
+        try:
+            trade = Trade.objects.using(dbUser).get(owner=profile, stockinfo=stockprice)
+            trade.quantity += Decimal(quantity)
+            trade.save()
+        except ObjectDoesNotExist:
+            Trade.objects.using(dbUser).create(
+                owner=profile, stockinfo=stockprice, quantity=quantity)
+        virtualFund = VirtualFunds.objects.using(dbUser).get(user=profile)
+        virtualFund.balance -= Decimal(quantity) * stockprice.closeprice
+        virtualFund.save()
 
     return render(request, 'stock/stockprice.html', {
         'profile': profile, 'price': stockprice
