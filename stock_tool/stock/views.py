@@ -362,6 +362,28 @@ def buystock(request, symbol, timestamp):
     virtualFund.save()
     return Response({"message": "Buy successfully"}, status=status.HTTP_200_OK)
 
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def sellstock(request, symbol, timestamp):
+    db = get_database(symbol)
+    stock = Stock.objects.using(db).get(symbol=symbol)
+    dbUser = get_database(request.user.username)
+    profile = Profile.objects.using(dbUser).get(username=request.user.username)
+    stockprice = StockPrice.objects.using(db).get(stock=stock, timestamp=timestamp)
+    quantity = request.data['quantity']
+    trade = Trade.objects.using(dbUser).get(user=profile, stockinfo=stockprice)
+    trade.quantity -= Decimal(quantity)
+    if trade.quantity == 0:
+        trade.delete()
+    else:
+        trade.save()
+    virtualFund = VirtualFunds.objects.using(dbUser).get(user=profile)
+    virtualFund.balance += Decimal(quantity) * stockprice.closeprice
+    virtualFund.save()
+    return Response({"message": "Sell successfully"}, status=status.HTTP_200_OK)
+
 # @login_required(login_url='login')
 # def buystock(request, symbol, timestamp):
 #     db = get_database(symbol)
