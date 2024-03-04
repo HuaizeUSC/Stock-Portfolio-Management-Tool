@@ -25,12 +25,13 @@
   "keyToString": {
     "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
-    "last_opened_file_path": "D:/Codes/Python/django/Stock-Protfolio-Management-Tool",
+    "last_opened_file_path": "D:/Codes/Python/django/Stock-Protfolio-Management-Tool/stock_tool/user",
     "settings.editor.selected.configurable": "editor.preferences.fonts.default"
   }
 }]]></component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\Codes\Python\django\Stock-Protfolio-Management-Tool\stock_tool\user" />
       <recent name="D:\Codes\Python\django\Stock-Protfolio-Management-Tool\stock_tool\stock\templates\stock" />
     </key>
   </component>

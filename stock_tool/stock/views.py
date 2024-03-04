@@ -1,5 +1,10 @@
 from datetime import datetime
 from decimal import Decimal
+
+from rest_framework import status
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 from os import execv
 
 from django.core.exceptions import ObjectDoesNotExist
@@ -10,6 +15,10 @@ import requests
 from dateutil.relativedelta import relativedelta
 from django.contrib.auth.decorators import login_required
 from user.models import Profile, Trade, FavoriteStock, VirtualFunds
+
+from .serializers import StockSerializer, StockPriceSerializer
+from user.serializers import ProfileSerializer
+from rest_framework_simplejwt.authentication import JWTAuthentication
 
 # Create your views here.
 ALPHAVANTAGE_API = 'ATY7R49Z6YQ679WR'
@@ -23,6 +32,7 @@ NASDAQ100 = ['AAL', 'AAPL', 'ADBE', 'ADI', 'ADP', 'ADSK', 'AKAM', 'ALXN', 'AMAT'
              'SIRI', 'SRCL', 'STX', 'SWKS', 'TMUS', 'TRIP', 'TSCO', 'TSLA', 'TXN', 'ULTA', 'VOD', 'VRSK', 'VRTX', 'WBA',
              'WDC', 'XRAY']
 databases = ['mysql1', 'mysql2', 'mysql3']
+querysets = []
 
 
 # hidden function only vistied by urls
@@ -53,10 +63,8 @@ def initialize_system():
     startday, endday = startday.strftime(
         "%Y-%m-%d"), endday.strftime("%Y-%m-%d")
     for symbol in NASDAQ100:
-        print(symbol)
         db = get_database(symbol)
         if (create_stock(symbol)):
-            print(symbol)
             stock_model = Stock.objects.using(db).get(symbol=symbol)
             response_newstock = requests.get(
                 url=f"https://api.polygon.io/v2/aggs/ticker/{symbol}/range/1/day/{startday}/{endday}?adjusted=true&sort=asc&apiKey=7sDFU1hnKlUhRDSY7kKTmE4hMwrfpyLo"
@@ -166,120 +174,214 @@ def create_stock(symbol):
             return False
 
 
-def stocks(request):
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+def stocks(request, pageNum, numPerPage):
     if request.user.is_authenticated:
-        try:
-            profile = Profile.objects.using(get_database(request.user.username)).using(
-                get_database(request.user.username)).get(username=request.user.username)
-        except Profile.DoesNotExist:
-            profile = None
+        profile = Profile.objects.using(get_database(request.user.username)).get(username=request.user.username)
     else:
         profile = None
-    context = {'stocks': get_combined_queryset(), 'profile': profile, 'error': None}
-    # if request.method == 'POST':
-    if request.method == 'GET':
-        symbol = request.GET.get('symbol')
-        if symbol:
-            symbol = symbol.upper()
-            try:
-                db = get_database(symbol)
-                stock = Stock.objects.using(db).get(symbol=symbol)
-                return redirect('stock', symbol=symbol)
-            except Stock.DoesNotExist:
-                if create_stock(symbol):
-                    return redirect('stock', symbol=symbol)
-                else:
-                    context['error'] = f'Stock with symbol {symbol} not found.'
-                    # context['stocks'] = Stock.objects.all().order_by(
-                    #     '-latestcloseprice')
-                    return render(request, 'stock/stocks.html', context)
-
-    return render(request, 'stock/stocks.html', context)
+    context = {'stocks': StockSerializer(get_combined_queryset(pageNum, numPerPage), many=True).data,
+               'profile': ProfileSerializer(profile).data}
+    return Response(context, status=status.HTTP_200_OK)
 
 
-def get_combined_queryset():
-    querysets = []
-    for db in databases:
-        queryset = Stock.objects.using(db).all().order_by('-latestcloseprice')
-        querysets += list(queryset)
-    return querysets
+# def stocks(request):
+#     if request.user.is_authenticated:
+#         try:
+#             profile = Profile.objects.using(get_database(request.user.username)).using(
+#                 get_database(request.user.username)).get(username=request.user.username)
+#         except Profile.DoesNotExist:
+#             profile = None
+#     else:
+#         profile = None
+#     context = {'stocks': get_combined_queryset(), 'profile': profile, 'error': None}
+#     # if request.method == 'POST':
+#     if request.method == 'GET':
+#         symbol = request.GET.get('symbol')
+#         if symbol:
+#             symbol = symbol.upper()
+#             try:
+#                 db = get_database(symbol)
+#                 stock = Stock.objects.using(db).get(symbol=symbol)
+#                 return redirect('stock', symbol=symbol)
+#             except Stock.DoesNotExist:
+#                 if create_stock(symbol):
+#                     return redirect('stock', symbol=symbol)
+#                 else:
+#                     context['error'] = f'Stock with symbol {symbol} not found.'
+#                     # context['stocks'] = Stock.objects.all().order_by(
+#                     #     '-latestcloseprice')
+#                     return render(request, 'stock/stocks.html', context)
+#
+#     return render(request, 'stock/stocks.html', context)
 
 
+def get_combined_queryset(pageNum, numPerPage):
+    global querysets
+    if not querysets:
+        for db in databases:
+            queryset = Stock.objects.using(db).all().order_by('-latestcloseprice')
+            querysets += list(queryset)
+    return querysets[(pageNum - 1) * numPerPage:pageNum * numPerPage - 1]
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
 def stock(request, symbol):
     if request.user.is_authenticated:
-        try:
-            db = get_database(request.user.username)
-            profile = Profile.objects.using(db).get(username=request.user.username)
-        except Profile.DoesNotExist:
-            profile = None
+        profile = Profile.objects.using(get_database(request.user.username)).get(username=request.user.username)
     else:
         profile = None
+    symbol = symbol.upper()
     try:
         db = get_database(symbol)
         stock = Stock.objects.using(db).get(symbol=symbol)
-        return render(request, 'stock/stock.html',
-                      {'stock': stock,
-                       'prices': StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp'),
-                       'profile': profile})
+        stockPrice = StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp')
+        context = {'stock': StockSerializer(stock).data,
+                   'stockPrice': StockPriceSerializer(stockPrice, many=True).data,
+                   'profile': ProfileSerializer(profile).data}
+        return Response(context, status=status.HTTP_200_OK)
     except Stock.DoesNotExist:
-        db = get_database(symbol)
-        error = f'Stock with symbol {symbol} not found.'
-        return render(request, 'stock/stocks.html',
-                      {'error': error, 'stocks': Stock.objects.using(db).all().order_by('-latestcloseprice'),
-                       'profile': profile})
+        if create_stock(symbol):
+            db = get_database(symbol)
+            stock = Stock.objects.using(db).get(symbol=symbol)
+            stockPrice = StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp')
+            context = {'stock': StockSerializer(stock).data,
+                       'stockPrice': StockPriceSerializer(stockPrice, many=True).data,
+                       'profile': ProfileSerializer(profile).data}
+            return Response(context, status=status.HTTP_200_OK)
+        else:
+            return Response({"error": f'Stock with symbol {symbol} not found.'}, status=status.HTTP_400_BAD_REQUEST)
 
 
-def stockprice(request, symbol, timestamp):
+# def stock(request, symbol):
+#     if request.user.is_authenticated:
+#         try:
+#             db = get_database(request.user.username)
+#             profile = Profile.objects.using(db).get(username=request.user.username)
+#         except Profile.DoesNotExist:
+#             profile = None
+#     else:
+#         profile = None
+#     try:
+#         db = get_database(symbol)
+#         stock = Stock.objects.using(db).get(symbol=symbol)
+#         return render(request, 'stock/stock.html',
+#                       {'stock': stock,
+#                        'prices': StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp'),
+#                        'profile': profile})
+#     except Stock.DoesNotExist:
+#         db = get_database(symbol)
+#         error = f'Stock with symbol {symbol} not found.'
+#         return render(request, 'stock/stocks.html',
+#                       {'error': error, 'stocks': Stock.objects.using(db).all().order_by('-latestcloseprice'),
+#                        'profile': profile})
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+def stockPrice(request, symbol, timestamp):
     if request.user.is_authenticated:
-        try:
-            db = get_database(request.user.username)
-            profile = Profile.objects.using(db).get(username=request.user.username)
-        except Profile.DoesNotExist:
-            profile = None
+        profile = Profile.objects.using(get_database(request.user.username)).get(username=request.user.username)
     else:
         profile = None
     db = get_database(symbol)
     stock = Stock.objects.using(db).get(symbol=symbol)
     stockprice = StockPrice.objects.using(db).get(stock=stock, timestamp=timestamp)
-    return render(request, 'stock/stockprice.html', {
-        'profile': profile, 'price': stockprice
-    })
+    context = {'stockPrice': StockPriceSerializer(stockprice).data,
+               'profile': ProfileSerializer(profile).data}
+    return Response(context, status=status.HTTP_200_OK)
 
 
-@login_required(login_url='login')
+# def stockprice(request, symbol, timestamp):
+#     if request.user.is_authenticated:
+#         try:
+#             db = get_database(request.user.username)
+#             profile = Profile.objects.using(db).get(username=request.user.username)
+#         except Profile.DoesNotExist:
+#             profile = None
+#     else:
+#         profile = None
+#     db = get_database(symbol)
+#     stock = Stock.objects.using(db).get(symbol=symbol)
+#     stockprice = StockPrice.objects.using(db).get(stock=stock, timestamp=timestamp)
+#     return render(request, 'stock/stockprice.html', {
+#         'profile': profile, 'price': stockprice
+#     })
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def favor(request, symbol):
-    print(21)
     db = get_database(symbol)
     stock = Stock.objects.using(db).get(symbol=symbol)
     dbUser = get_database(request.user.username)
-    if not FavoriteStock.objects.using(dbUser).filter(owner=request.user.profile, stock=stock).exists():
+    user = Profile.objects.using(dbUser).get(username=request.user.username)
+    if not FavoriteStock.objects.using(dbUser).filter(user=user, stock=stock).exists():
         FavoriteStock.objects.using(dbUser).create(
-            owner=request.user.profile,
+            user=user,
             stock=stock
         )
-    return redirect('stock', symbol=symbol)
+        return Response({"message": "Add successfully"}, status=status.HTTP_200_OK)
+    else:
+        return Response({"message": "Already in the favorite list"}, status=status.HTTP_400_BAD_REQUEST)
 
 
-@login_required(login_url='login')
+# def favor(request, symbol):
+#     db = get_database(symbol)
+#     stock = Stock.objects.using(db).get(symbol=symbol)
+#     dbUser = get_database(request.user.username)
+#     user = Profile.objects.using(dbUser).get(username=request.user.username)
+#     if not FavoriteStock.objects.using(dbUser).filter(owner=user, stock=stock).exists():
+#         FavoriteStock.objects.using(dbUser).create(
+#             owner=user,
+#             stock=stock
+#         )
+#     return redirect('stock', symbol=symbol)
+
+@api_view(['POST'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
 def buystock(request, symbol, timestamp):
     db = get_database(symbol)
     stock = Stock.objects.using(db).get(symbol=symbol)
     dbUser = get_database(request.user.username)
-    profile = Profile.objects.using(dbUser).get(user=request.user)
+    profile = Profile.objects.using(dbUser).get(username=request.user.username)
     stockprice = StockPrice.objects.using(db).get(stock=stock, timestamp=timestamp)
-    if request.method == 'GET':
-        quantity = request.GET.get('quantity')
-        try:
-            trade = Trade.objects.using(dbUser).get(owner=profile, stockinfo=stockprice)
-            trade.quantity += Decimal(quantity)
-            trade.save()
-        except ObjectDoesNotExist:
-            Trade.objects.using(dbUser).create(
-                owner=profile, stockinfo=stockprice, quantity=quantity)
-        virtualFund = VirtualFunds.objects.using(dbUser).get(user=profile)
-        virtualFund.balance -= Decimal(quantity) * stockprice.closeprice
-        virtualFund.save()
+    quantity = request.data['quantity']
+    try:
+        trade = Trade.objects.using(dbUser).get(user=profile, stockinfo=stockprice)
+        trade.quantity += Decimal(quantity)
+        trade.save()
+    except ObjectDoesNotExist:
+        Trade.objects.using(dbUser).create(
+            user=profile, stockinfo=stockprice, quantity=quantity)
+    virtualFund = VirtualFunds.objects.using(dbUser).get(user=profile)
+    virtualFund.balance -= Decimal(quantity) * stockprice.closeprice
+    virtualFund.save()
+    return Response({"message": "Buy successfully"}, status=status.HTTP_200_OK)
 
-    return render(request, 'stock/stockprice.html', {
-        'profile': profile, 'price': stockprice
-    })
+# @login_required(login_url='login')
+# def buystock(request, symbol, timestamp):
+#     db = get_database(symbol)
+#     stock = Stock.objects.using(db).get(symbol=symbol)
+#     dbUser = get_database(request.user.username)
+#     profile = Profile.objects.using(dbUser).get(username=request.user.username)
+#     stockprice = StockPrice.objects.using(db).get(stock=stock, timestamp=timestamp)
+#     if request.method == 'GET':
+#         quantity = request.GET.get('quantity')
+#         try:
+#             trade = Trade.objects.using(dbUser).get(owner=profile, stockinfo=stockprice)
+#             trade.quantity += Decimal(quantity)
+#             trade.save()
+#         except ObjectDoesNotExist:
+#             Trade.objects.using(dbUser).create(
+#                 owner=profile, stockinfo=stockprice, quantity=quantity)
+#         virtualFund = VirtualFunds.objects.using(dbUser).get(user=profile)
+#         virtualFund.balance -= Decimal(quantity) * stockprice.closeprice
+#         virtualFund.save()
+#
+#     return render(request, 'stock/stockprice.html', {
+#         'profile': profile, 'price': stockprice
+#     })

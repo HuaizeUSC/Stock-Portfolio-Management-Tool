@@ -16,7 +16,6 @@
       <li><strong>Time:</strong> {{ price.timestamp }}</li>
     </ul>
     <form action="{% url 'sellstock' price.stock.symbol price.timestamp %}" method="GET">
-        {% csrf_token %}
         <label for="quantity">Quantity:</label>
         <input type="number" id="quantity" name="quantity" step="1" required>
         <button type="submit">Buy</button>
