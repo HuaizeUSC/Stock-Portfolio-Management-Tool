@@ -38,6 +38,7 @@ def registeUser(request):
         profile = Profile.objects.using(db).create(username=user.username)
         return Response({"user_id": profile.id}, status=status.HTTP_200_OK)
     else:
+        print(form.errors)
         return Response({"error": form.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
