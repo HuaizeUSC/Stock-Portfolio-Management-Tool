@@ -15,5 +15,5 @@ urlpatterns = [
     path('market/price/<str:symbol>/<str:timestamp>', views.stockPrice, name="stock_price"),
     path('market/favor/<str:symbol>/', views.favor, name="favor"),
     path('market/buy/<str:symbol>/', views.buystock, name="buy_stock"),
-    path('market/sell/<str:symbol>/<str:timestamp>/', views.sellstock, name="buy_stock")
+    path('market/sell/<str:symbol>/', views.sellstock, name="sell_stock")
 ]

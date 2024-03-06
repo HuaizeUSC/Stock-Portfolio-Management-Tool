@@ -386,12 +386,12 @@ def buystock(request, symbol):
 @api_view(['POST'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
-def sellstock(request, symbol, timestamp):
+def sellstock(request, symbol):
     db = get_database(symbol)
     stock = Stock.objects.using(db).get(symbol=symbol)
     dbUser = get_database(request.user.username)
     profile = Profile.objects.using(dbUser).get(username=request.user.username)
-    stockprice = StockPrice.objects.using(db).get(stock=stock, timestamp=timestamp)
+    stockprice = StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp').first()
     quantity = request.data['quantity']
     trade = Trade.objects.using(dbUser).get(user=profile, stockinfo=stockprice)
     trade.quantity -= Decimal(quantity)
