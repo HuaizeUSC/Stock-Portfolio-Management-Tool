@@ -114,22 +114,36 @@ def deleteFavor(request, symbol):
 @api_view(['GET'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
-def profile(request):
+def favors(request, pageNum, numPerPage):
     db = get_database(request.user.username)
     profile = Profile.objects.using(db).get(username=request.user.username)
-    trades = []
     favors = []
-    try:
-        trades += list(Trade.objects.using(db).filter(user=profile))
-    except:
-        trades = []
     try:
         favors += list(FavoriteStock.objects.using(db).filter(user=profile))
     except:
         favors = []
+    if pageNum * numPerPage > len(favors):
+        favors = favors[(pageNum - 1) * numPerPage:]
+    else:
+        favors = favors[(pageNum - 1) * numPerPage:pageNum * numPerPage]
+    context = {'profile': ProfileSerializer(profile).data, 'favors': FavoriteStockSerializer(favors, many=True).data}
+    return Response(context, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@authentication_classes([JWTAuthentication])
+@permission_classes([IsAuthenticated])
+def trades(request):
+    db = get_database(request.user.username)
+    profile = Profile.objects.using(db).get(username=request.user.username)
+    trades = []
+    try:
+        trades += list(Trade.objects.using(db).filter(user=profile))
+    except:
+        trades = []
     funds = VirtualFunds.objects.using(db).get(user=profile)
     context = {'profile': ProfileSerializer(profile).data, 'trades': TradeSerializer(trades, many=True).data,
-               'funds': VirtualFundsSerializer(funds).data, 'favors': FavoriteStockSerializer(favors, many=True).data}
+               'funds': VirtualFundsSerializer(funds).data}
     return Response(context, status=status.HTTP_200_OK)
 
 

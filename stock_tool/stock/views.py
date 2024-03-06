@@ -2,6 +2,8 @@ from datetime import datetime
 from decimal import Decimal
 
 import math
+
+from django.db.models import Case, When, Exists, OuterRef, Value, BooleanField
 from rest_framework import status
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -17,7 +19,7 @@ from dateutil.relativedelta import relativedelta
 from django.contrib.auth.decorators import login_required
 from user.models import Profile, Trade, FavoriteStock, VirtualFunds
 
-from .serializers import StockSerializer, StockPriceSerializer
+from .serializers import StockSerializer, StockPriceSerializer, StockWithFavorSerializer
 from user.serializers import ProfileSerializer
 from rest_framework_simplejwt.authentication import JWTAuthentication
 
@@ -182,7 +184,7 @@ def stocks(request, pageNum, numPerPage):
         profile = Profile.objects.using(get_database(request.user.username)).get(username=request.user.username)
     else:
         profile = None
-    context = {'stocks': StockSerializer(get_combined_queryset(pageNum, numPerPage), many=True).data,
+    context = {'stocks': StockWithFavorSerializer(get_combined_queryset(profile, pageNum, numPerPage), many=True).data,
                'profile': ProfileSerializer(profile).data,
                'pageNum': math.ceil(len(querysets) / numPerPage)}
     return Response(context, status=status.HTTP_200_OK)
@@ -219,11 +221,24 @@ def stocks(request, pageNum, numPerPage):
 #     return render(request, 'stock/stocks.html', context)
 
 
-def get_combined_queryset(pageNum, numPerPage):
+def get_combined_queryset(profile, pageNum, numPerPage):
     global querysets
     querysets = []
+    favorite_stocks = FavoriteStock.objects.filter(user=profile)
     for db in databases:
-        queryset = Stock.objects.using(db).all().order_by('-latestcloseprice')
+        # queryset = Stock.objects.using(db).all().order_by('-latestcloseprice')
+        # queryset = queryset.annotate(favor=Case(
+        #     When(id__in=favorite_stocks, then=True),
+        #     default=False,
+        #     output_field=BooleanField()
+        # ))
+        queryset = Stock.objects.using(db).annotate(
+            favor=Case(
+                When(id__in=favorite_stocks, then=True),
+                default=False,
+                output_field=BooleanField()
+            )
+        )
         querysets += list(queryset)
     if pageNum * numPerPage > len(querysets):
         return querysets[(pageNum - 1) * numPerPage:]
@@ -348,12 +363,12 @@ def favor(request, symbol):
 @api_view(['POST'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
-def buystock(request, symbol, timestamp):
+def buystock(request, symbol):
     db = get_database(symbol)
     stock = Stock.objects.using(db).get(symbol=symbol)
     dbUser = get_database(request.user.username)
     profile = Profile.objects.using(dbUser).get(username=request.user.username)
-    stockprice = StockPrice.objects.using(db).get(stock=stock, timestamp=timestamp)
+    stockprice = StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp').first()
     quantity = request.data['quantity']
     try:
         trade = Trade.objects.using(dbUser).get(user=profile, stockinfo=stockprice)
@@ -361,7 +376,7 @@ def buystock(request, symbol, timestamp):
         trade.save()
     except ObjectDoesNotExist:
         Trade.objects.using(dbUser).create(
-            user=profile, stockinfo=stockprice, quantity=quantity)
+            user=profile, stockinfo=stockprice, quantity=quantity, timestamp=stockprice.timestamp)
     virtualFund = VirtualFunds.objects.using(dbUser).get(user=profile)
     virtualFund.balance -= Decimal(quantity) * stockprice.closeprice
     virtualFund.save()
