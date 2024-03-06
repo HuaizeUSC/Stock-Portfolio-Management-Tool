@@ -182,7 +182,8 @@ def stocks(request, pageNum, numPerPage):
     else:
         profile = None
     context = {'stocks': StockSerializer(get_combined_queryset(pageNum, numPerPage), many=True).data,
-               'profile': ProfileSerializer(profile).data}
+               'profile': ProfileSerializer(profile).data,
+               'pageNum': len(querysets)}
     return Response(context, status=status.HTTP_200_OK)
 
 
@@ -223,7 +224,10 @@ def get_combined_queryset(pageNum, numPerPage):
         for db in databases:
             queryset = Stock.objects.using(db).all().order_by('-latestcloseprice')
             querysets += list(queryset)
-    return querysets[(pageNum - 1) * numPerPage:pageNum * numPerPage]
+    if pageNum * numPerPage > len(querysets):
+        return querysets[(pageNum - 1) * numPerPage:]
+    else:
+        return querysets[(pageNum - 1) * numPerPage:pageNum * numPerPage]
 
 
 @api_view(['GET'])
