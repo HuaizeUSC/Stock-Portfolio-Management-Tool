@@ -224,14 +224,8 @@ def stocks(request, pageNum, numPerPage):
 def get_combined_queryset(profile, pageNum, numPerPage):
     global querysets
     querysets = []
-    favorite_stocks = FavoriteStock.objects.filter(user=profile)
+    favorite_stocks = FavoriteStock.objects.using(get_database(profile.username)).filter(user=profile)
     for db in databases:
-        # queryset = Stock.objects.using(db).all().order_by('-latestcloseprice')
-        # queryset = queryset.annotate(favor=Case(
-        #     When(id__in=favorite_stocks, then=True),
-        #     default=False,
-        #     output_field=BooleanField()
-        # ))
         queryset = Stock.objects.using(db).annotate(
             favor=Case(
                 When(id__in=favorite_stocks, then=True),
@@ -256,9 +250,16 @@ def stock(request, symbol):
     symbol = symbol.upper()
     try:
         db = get_database(symbol)
+
         stock = Stock.objects.using(db).get(symbol=symbol)
+        favorite_stock = FavoriteStock.objects.using(get_database(profile.username)).filter(user=profile,
+                                                                                            stock=stock).exists()
+        if favorite_stock:
+            setattr(stock, 'favor', True)
+        else:
+            setattr(stock, 'favor', False)
         stockPrice = StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp')
-        context = {'stock': StockSerializer(stock).data,
+        context = {'stock': StockWithFavorSerializer(stock).data,
                    'stockPrice': StockPriceSerializer(stockPrice, many=True).data,
                    'profile': ProfileSerializer(profile).data}
         return Response(context, status=status.HTTP_200_OK)
