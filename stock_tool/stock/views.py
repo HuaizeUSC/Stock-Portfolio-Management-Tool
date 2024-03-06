@@ -223,7 +223,7 @@ def get_combined_queryset(pageNum, numPerPage):
         for db in databases:
             queryset = Stock.objects.using(db).all().order_by('-latestcloseprice')
             querysets += list(queryset)
-    return querysets[(pageNum - 1) * numPerPage:pageNum * numPerPage - 1]
+    return querysets[(pageNum - 1) * numPerPage:pageNum * numPerPage]
 
 
 @api_view(['GET'])

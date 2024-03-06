@@ -4,7 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="bf0b5ef4-0086-4a46-9283-f033c171d614" name="Changes" comment="" />
+    <list default="true" id="bf0b5ef4-0086-4a46-9283-f033c171d614" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/stock_tool/db.sqlite3" beforeDir="false" afterPath="$PROJECT_DIR$/stock_tool/db.sqlite3" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/stock_tool/stock/views.py" beforeDir="false" afterPath="$PROJECT_DIR$/stock_tool/stock/views.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/stock_tool/stock_tool/settings.py" beforeDir="false" afterPath="$PROJECT_DIR$/stock_tool/stock_tool/settings.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -21,16 +26,17 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "RunOnceActivity.OpenProjectViewOnStart": "true",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "last_opened_file_path": "D:/Codes/Python/django/Stock-Protfolio-Management-Tool/stock_tool/user",
-    "settings.editor.selected.configurable": "editor.preferences.fonts.default"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;last_opened_file_path&quot;: &quot;D:/Codes/Python/django/Stock-Protfolio-Management-Tool/stock_tool&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;editor.preferences.fonts.default&quot;
   }
-}]]></component>
+}</component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="D:\Codes\Python\django\Stock-Protfolio-Management-Tool\stock_tool" />
       <recent name="D:\Codes\Python\django\Stock-Protfolio-Management-Tool\stock_tool\user" />
       <recent name="D:\Codes\Python\django\Stock-Protfolio-Management-Tool\stock_tool\stock\templates\stock" />
     </key>

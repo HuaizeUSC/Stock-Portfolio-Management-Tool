@@ -86,34 +86,47 @@ SIMPLE_JWT = {
 
 DATABASES = {
     'mysql1': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'stock',
-        'USER': 'avnadmin',
-        'PASSWORD': 'AVNS_D7GaJgCDbIJXX6iLwlb',
-        'HOST': 'mysql-9fe7605-dsci551.a.aivencloud.com',
-        'PORT': '14855',
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db1.sqlite3",
     },
     'mysql2': {
-        'ENGINE': 'django.db.ba'
-                  'ckends.mysql',
-        'NAME': 'defaultdb',
-        'USER': 'avnadmin',
-        'PASSWORD': 'AVNS_2Kxk7MGwQD3GWMfcN76',
-        'HOST': 'mysql-392b47df-sznxlhc0205-3d05.a.aivencloud.com',
-        'PORT': '23980',
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db2.sqlite3",
     },
     'mysql3': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'defaultdb',
-        'USER': 'avnadmin',
-        'PASSWORD': 'AVNS_4R20JM0kjlERekdy1KY',
-        'HOST': 'mysql-stock-distribute-database-stock-distribute-database.a.aivencloud.com',
-        'PORT': '21086',
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db3.sqlite3",
     },
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
     },
+
+    # 'mysql1': {
+    #         'ENGINE': 'django.db.backends.mysql',
+    #         'NAME': 'stock',
+    #         'USER': 'avnadmin',
+    #         'PASSWORD': 'AVNS_D7GaJgCDbIJXX6iLwlb',
+    #         'HOST': 'mysql-9fe7605-dsci551.a.aivencloud.com',
+    #         'PORT': '14855',
+    #     },
+    #     'mysql2': {
+    #         'ENGINE': 'django.db.ba'
+    #                   'ckends.mysql',
+    #         'NAME': 'defaultdb',
+    #         'USER': 'avnadmin',
+    #         'PASSWORD': 'AVNS_2Kxk7MGwQD3GWMfcN76',
+    #         'HOST': 'mysql-392b47df-sznxlhc0205-3d05.a.aivencloud.com',
+    #         'PORT': '23980',
+    #     },
+    #     'mysql3': {
+    #         'ENGINE': 'django.db.backends.mysql',
+    #         'NAME': 'defaultdb',
+    #         'USER': 'avnadmin',
+    #         'PASSWORD': 'AVNS_4R20JM0kjlERekdy1KY',
+    #         'HOST': 'mysql-stock-distribute-database-stock-distribute-database.a.aivencloud.com',
+    #         'PORT': '21086',
+    #     },
 }
 
 # Password validation
