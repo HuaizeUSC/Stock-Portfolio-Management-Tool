@@ -220,10 +220,9 @@ def stocks(request, pageNum, numPerPage):
 
 def get_combined_queryset(pageNum, numPerPage):
     global querysets
-    if not querysets:
-        for db in databases:
-            queryset = Stock.objects.using(db).all().order_by('-latestcloseprice')
-            querysets += list(queryset)
+    for db in databases:
+        queryset = Stock.objects.using(db).all().order_by('-latestcloseprice')
+        querysets += list(queryset)
     if pageNum * numPerPage > len(querysets):
         return querysets[(pageNum - 1) * numPerPage:]
     else:
