@@ -184,7 +184,7 @@ def stocks(request, pageNum, numPerPage):
         profile = Profile.objects.using(get_database(request.user.username)).get(username=request.user.username)
     else:
         profile = None
-    context = {'stocks': StockWithFavorSerializer(get_combined_queryset(profile, pageNum, numPerPage), many=True).data,
+    context = {'stocks': StockSerializer(get_combined_queryset(profile, pageNum, numPerPage), many=True).data,
                'profile': ProfileSerializer(profile).data,
                'pageNum': math.ceil(len(querysets) / numPerPage)}
     return Response(context, status=status.HTTP_200_OK)
@@ -224,15 +224,16 @@ def stocks(request, pageNum, numPerPage):
 def get_combined_queryset(profile, pageNum, numPerPage):
     global querysets
     querysets = []
-    favorite_stocks = FavoriteStock.objects.using(get_database(profile.username)).filter(user=profile)
+    favorite_stocks = list(FavoriteStock.objects.using(get_database(profile.username)).filter(user=profile))
     for db in databases:
-        queryset = Stock.objects.using(db).annotate(
-            favor=Case(
-                When(id__in=favorite_stocks, then=True),
-                default=False,
-                output_field=BooleanField()
-            )
-        )
+        # queryset = Stock.objects.using(db).annotate(
+        #     favor=Case(
+        #         When(id__in=[fs.id for fs in favorite_stocks], then=True),
+        #         default=False,
+        #         output_field=BooleanField()
+        #     )
+        # )
+        queryset = Stock.objects.using(db).all()
         querysets += list(queryset)
     if pageNum * numPerPage > len(querysets):
         return querysets[(pageNum - 1) * numPerPage:]
