@@ -380,6 +380,7 @@ def buystock(request, symbol):
         try:
             trade = Trade.objects.using(dbUser).get(user=profile, stockinfo=symbol)
             trade.quantity += Decimal(quantity)
+            trade.timestamp = stockprice.timestamp
             trade.save()
         except ObjectDoesNotExist:
             Trade.objects.using(dbUser).create(

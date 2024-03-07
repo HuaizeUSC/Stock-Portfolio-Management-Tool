@@ -18,6 +18,8 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
 from rest_framework.permissions import IsAuthenticated
 
+from stock.serializers import StockSerializer
+
 databases = ['mysql1', 'mysql2', 'mysql3']
 
 
@@ -130,7 +132,9 @@ def favors(request, pageNum, numPerPage):
         favors = favors[(pageNum - 1) * numPerPage:]
     else:
         favors = favors[(pageNum - 1) * numPerPage:pageNum * numPerPage]
-    context = {'profile': ProfileSerializer(profile).data, 'favors': FavoriteStockSerializer(favors, many=True).data,
+    stockIds = [fav.stock for fav in favors]
+    stocks = Stock.objects.using(databases[0]).filter(pk__in=stockIds)
+    context = {'profile': ProfileSerializer(profile).data, 'favors': StockSerializer(stocks, many=True).data,
                'pageNum': math.ceil(len(favors) / numPerPage)}
     return Response(context, status=status.HTTP_200_OK)
 
