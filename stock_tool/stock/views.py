@@ -251,7 +251,6 @@ def stock(request, symbol):
     symbol = symbol.upper()
     try:
         db = get_database(symbol)
-
         stock = Stock.objects.using(db).get(symbol=symbol)
         favorite_stock = FavoriteStock.objects.using(get_database(profile.username)).filter(user=profile,
                                                                                             stock=stock).exists()
@@ -268,8 +267,9 @@ def stock(request, symbol):
         if create_stock(symbol):
             db = get_database(symbol)
             stock = Stock.objects.using(db).get(symbol=symbol)
+            setattr(stock, 'favor', False)
             stockPrice = StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp')
-            context = {'stock': StockSerializer(stock).data,
+            context = {'stock': StockWithFavorSerializer(stock).data,
                        'stockPrice': StockPriceSerializer(stockPrice, many=True).data,
                        'profile': ProfileSerializer(profile).data}
             return Response(context, status=status.HTTP_200_OK)
@@ -381,7 +381,7 @@ def buystock(request, symbol):
         trade.save()
     except ObjectDoesNotExist:
         Trade.objects.using(dbUser).create(
-            user=profile, stockinfo=stockprice, quantity=quantity, timestamp=stockprice.timestamp)
+            user=profile, stockinfo=stockprice, quantity=quantity, price=stockprice.closeprice, timestamp=stockprice.timestamp)
     virtualFund = VirtualFunds.objects.using(dbUser).get(user=profile)
     virtualFund.balance -= Decimal(quantity) * stockprice.closeprice
     virtualFund.save()

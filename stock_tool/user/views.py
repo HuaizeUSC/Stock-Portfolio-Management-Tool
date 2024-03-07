@@ -1,3 +1,5 @@
+import math
+
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
@@ -126,14 +128,15 @@ def favors(request, pageNum, numPerPage):
         favors = favors[(pageNum - 1) * numPerPage:]
     else:
         favors = favors[(pageNum - 1) * numPerPage:pageNum * numPerPage]
-    context = {'profile': ProfileSerializer(profile).data, 'favors': FavoriteStockSerializer(favors, many=True).data}
+    context = {'profile': ProfileSerializer(profile).data, 'favors': FavoriteStockSerializer(favors, many=True).data,
+               'pageNum': math.ceil(len(favors) / numPerPage)}
     return Response(context, status=status.HTTP_200_OK)
 
 
 @api_view(['GET'])
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
-def trades(request):
+def trades(request, pageNum, numPerPage):
     db = get_database(request.user.username)
     profile = Profile.objects.using(db).get(username=request.user.username)
     trades = []
@@ -141,9 +144,14 @@ def trades(request):
         trades += list(Trade.objects.using(db).filter(user=profile))
     except:
         trades = []
+    if pageNum * numPerPage > len(trades):
+        trades = trades[(pageNum - 1) * numPerPage:]
+    else:
+        trades = trades[(pageNum - 1) * numPerPage:pageNum * numPerPage]
     funds = VirtualFunds.objects.using(db).get(user=profile)
     context = {'profile': ProfileSerializer(profile).data, 'trades': TradeSerializer(trades, many=True).data,
-               'funds': VirtualFundsSerializer(funds).data}
+               'funds': VirtualFundsSerializer(funds).data,
+               'pageNum': math.ceil(len(trades) / numPerPage)}
     return Response(context, status=status.HTTP_200_OK)
 
 

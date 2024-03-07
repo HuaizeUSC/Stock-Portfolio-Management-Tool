@@ -22,8 +22,9 @@ class Profile(models.Model):
 class Trade(models.Model):
     user = models.ForeignKey(Profile, on_delete=models.CASCADE)
     stockinfo = models.ForeignKey(
-        StockPrice, on_delete=models.CASCADE, null=True, blank=True)
+        StockPrice, on_delete=models.CASCADE)
     timestamp = models.BigIntegerField(null=True, blank=True)
+    price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     quantity = models.IntegerField()
 
     def __str__(self):

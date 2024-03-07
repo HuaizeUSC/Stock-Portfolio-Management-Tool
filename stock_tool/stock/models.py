@@ -6,7 +6,7 @@ from numpy import unicode_
 # Create your models here.
 
 class Stock(models.Model):
-    symbol = models.CharField(max_length=40, unique=True)
+    symbol = models.CharField(max_length=40, unique=True, primary_key=True)
     name = models.CharField(max_length=100, null=True, blank=True)
     location = models.CharField(max_length=100, null=True, blank=True)
     companytype = models.CharField(max_length=100, null=True, blank=True)
@@ -24,7 +24,7 @@ class Stock(models.Model):
 
 
 class StockPrice(models.Model):
-    stock = models.ForeignKey(Stock, on_delete=models.CASCADE, null=True, blank=True)
+    stock = models.ForeignKey(Stock, on_delete=models.CASCADE)
     timestamp = models.BigIntegerField(null=True, blank=True)
     openprice = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     closeprice = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
