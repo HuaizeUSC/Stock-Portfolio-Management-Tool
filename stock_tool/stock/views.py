@@ -339,19 +339,17 @@ def stockPrice(request, symbol, timestamp):
 def favor(request, symbol):
     symbol = symbol.upper()
     db = get_database(symbol)
-    with transaction.atomic(using=db):
-        stock = Stock.objects.using(db).get(symbol=symbol)
+    stock = Stock.objects.using(db).get(symbol=symbol)
     dbUser = get_database(request.user.username)
-    with transaction.atomic(using=dbUser):
-        user = Profile.objects.using(dbUser).get(username=request.user.username)
-        if not FavoriteStock.objects.using(dbUser).filter(user=user, stock=stock).exists():
-            FavoriteStock.objects.using(dbUser).create(
-                user=user,
-                stock=stock.symbol
-            )
-            return Response({"message": "Add successfully"}, status=status.HTTP_200_OK)
-        else:
-            return Response({"message": "Already in the favorite list"}, status=status.HTTP_400_BAD_REQUEST)
+    user = Profile.objects.using(dbUser).get(username=request.user.username)
+    if not FavoriteStock.objects.using(dbUser).filter(user=user, stock=symbol).exists():
+        FavoriteStock.objects.using(dbUser).create(
+            user=user,
+            stock=symbol
+        )
+        return Response({"message": "Add successfully"}, status=status.HTTP_200_OK)
+    else:
+        return Response({"message": "Already in the favorite list"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # def favor(request, symbol):
@@ -385,7 +383,8 @@ def buystock(request, symbol):
             trade.save()
         except ObjectDoesNotExist:
             Trade.objects.using(dbUser).create(
-                user=profile, stockinfo=symbol, quantity=quantity, price=stockprice.closeprice, timestamp=stockprice.timestamp)
+                user=profile, stockinfo=symbol, quantity=quantity, price=stockprice.closeprice,
+                timestamp=stockprice.timestamp)
         virtualFund = VirtualFunds.objects.using(dbUser).get(user=profile)
         virtualFund.balance -= Decimal(quantity) * stockprice.closeprice
         virtualFund.save()
