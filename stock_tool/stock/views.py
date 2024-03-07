@@ -253,7 +253,7 @@ def stock(request, symbol):
         db = get_database(symbol)
         stock = Stock.objects.using(db).get(symbol=symbol)
         favorite_stock = FavoriteStock.objects.using(get_database(profile.username)).filter(user=profile,
-                                                                                            stock=stock).exists()
+                                                                                            stock=symbol).exists()
         if favorite_stock:
             setattr(stock, 'favor', True)
         else:
@@ -378,7 +378,7 @@ def buystock(request, symbol):
         profile = Profile.objects.using(dbUser).get(username=request.user.username)
         quantity = request.data['quantity']
         try:
-            trade = Trade.objects.using(dbUser).get(user=profile, stockinfo=stock.symbol)
+            trade = Trade.objects.using(dbUser).get(user=profile, stockinfo=symbol)
             trade.quantity += Decimal(quantity)
             trade.save()
         except ObjectDoesNotExist:
