@@ -1,6 +1,7 @@
 import math
 
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.shortcuts import render, redirect
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.decorators import login_required
@@ -105,11 +106,12 @@ def logoutUser(request):
 @permission_classes([IsAuthenticated])
 def deleteFavor(request, symbol):
     db = get_database(symbol)
+    with transaction.atomic(using=db):
+        stock = Stock.objects.using(db).get(symbol=symbol)
     dbUser = get_database(request.user.username)
-    user = Profile.objects.using(dbUser).get(username=request.user.username)
-    stock = Stock.objects.using(db).get(symbol=symbol)
-
-    FavoriteStock.objects.using(dbUser).get(user=user, stock=stock).delete()
+    with transaction.atomic(using=dbUser):
+        user = Profile.objects.using(dbUser).get(username=request.user.username)
+        FavoriteStock.objects.using(dbUser).get(user=user, stock=symbol).delete()
     return Response({"message": "successfully delete this stock!"}, status=status.HTTP_200_OK)
 
 
@@ -140,10 +142,7 @@ def trades(request, pageNum, numPerPage):
     db = get_database(request.user.username)
     profile = Profile.objects.using(db).get(username=request.user.username)
     trades = []
-    try:
-        trades += list(Trade.objects.using(db).filter(user=profile))
-    except:
-        trades = []
+    trades += list(Trade.objects.using(db).filter(user=profile))
     if pageNum * numPerPage > len(trades):
         trades = trades[(pageNum - 1) * numPerPage:]
     else:

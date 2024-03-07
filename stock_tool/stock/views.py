@@ -11,7 +11,7 @@ from rest_framework.response import Response
 from os import execv
 
 from django.core.exceptions import ObjectDoesNotExist
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.shortcuts import render, redirect
 from .models import Stock, StockPrice
 import requests
@@ -339,17 +339,19 @@ def stockPrice(request, symbol, timestamp):
 def favor(request, symbol):
     symbol = symbol.upper()
     db = get_database(symbol)
-    stock = Stock.objects.using(db).get(symbol=symbol)
+    with transaction.atomic(using=db):
+        stock = Stock.objects.using(db).get(symbol=symbol)
     dbUser = get_database(request.user.username)
-    user = Profile.objects.using(dbUser).get(username=request.user.username)
-    if not FavoriteStock.objects.using(dbUser).filter(user=user, stock=stock).exists():
-        FavoriteStock.objects.using(dbUser).create(
-            user=user,
-            stock=stock
-        )
-        return Response({"message": "Add successfully"}, status=status.HTTP_200_OK)
-    else:
-        return Response({"message": "Already in the favorite list"}, status=status.HTTP_400_BAD_REQUEST)
+    with transaction.atomic(using=dbUser):
+        user = Profile.objects.using(dbUser).get(username=request.user.username)
+        if not FavoriteStock.objects.using(dbUser).filter(user=user, stock=stock).exists():
+            FavoriteStock.objects.using(dbUser).create(
+                user=user,
+                stock=stock.symbol
+            )
+            return Response({"message": "Add successfully"}, status=status.HTTP_200_OK)
+        else:
+            return Response({"message": "Already in the favorite list"}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # def favor(request, symbol):
@@ -370,21 +372,23 @@ def favor(request, symbol):
 def buystock(request, symbol):
     symbol = symbol.upper()
     db = get_database(symbol)
-    stock = Stock.objects.using(db).get(symbol=symbol)
+    with transaction.atomic(using=db):
+        stock = Stock.objects.using(db).get(symbol=symbol)
+        stockprice = StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp').first()
     dbUser = get_database(request.user.username)
-    profile = Profile.objects.using(dbUser).get(username=request.user.username)
-    stockprice = StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp').first()
-    quantity = request.data['quantity']
-    try:
-        trade = Trade.objects.using(dbUser).get(user=profile, stockinfo=stockprice)
-        trade.quantity += Decimal(quantity)
-        trade.save()
-    except ObjectDoesNotExist:
-        Trade.objects.using(dbUser).create(
-            user=profile, stockinfo=stockprice, quantity=quantity, price=stockprice.closeprice, timestamp=stockprice.timestamp)
-    virtualFund = VirtualFunds.objects.using(dbUser).get(user=profile)
-    virtualFund.balance -= Decimal(quantity) * stockprice.closeprice
-    virtualFund.save()
+    with transaction.atomic(using=dbUser):
+        profile = Profile.objects.using(dbUser).get(username=request.user.username)
+        quantity = request.data['quantity']
+        try:
+            trade = Trade.objects.using(dbUser).get(user=profile, stockinfo=stock.symbol)
+            trade.quantity += Decimal(quantity)
+            trade.save()
+        except ObjectDoesNotExist:
+            Trade.objects.using(dbUser).create(
+                user=profile, stockinfo=symbol, quantity=quantity, price=stockprice.closeprice, timestamp=stockprice.timestamp)
+        virtualFund = VirtualFunds.objects.using(dbUser).get(user=profile)
+        virtualFund.balance -= Decimal(quantity) * stockprice.closeprice
+        virtualFund.save()
     return Response({"message": "Buy successfully"}, status=status.HTTP_200_OK)
 
 
@@ -394,20 +398,22 @@ def buystock(request, symbol):
 def sellstock(request, symbol):
     symbol = symbol.upper()
     db = get_database(symbol)
-    stock = Stock.objects.using(db).get(symbol=symbol)
+    with transaction.atomic(using=db):
+        stock = Stock.objects.using(db).get(symbol=symbol)
+        stockprice = StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp').first()
     dbUser = get_database(request.user.username)
-    profile = Profile.objects.using(dbUser).get(username=request.user.username)
-    stockprice = StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp').first()
-    quantity = request.data['quantity']
-    trade = Trade.objects.using(dbUser).get(user=profile, stockinfo=stockprice)
-    trade.quantity -= Decimal(quantity)
-    if trade.quantity == 0:
-        trade.delete()
-    else:
-        trade.save()
-    virtualFund = VirtualFunds.objects.using(dbUser).get(user=profile)
-    virtualFund.balance += Decimal(quantity) * stockprice.closeprice
-    virtualFund.save()
+    with transaction.atomic(using=dbUser):
+        profile = Profile.objects.using(dbUser).get(username=request.user.username)
+        trade = Trade.objects.using(dbUser).get(user=profile, stockinfo=symbol)
+        quantity = request.data['quantity']
+        trade.quantity -= Decimal(quantity)
+        if trade.quantity == 0:
+            trade.delete()
+        else:
+            trade.save()
+        virtualFund = VirtualFunds.objects.using(dbUser).get(user=profile)
+        virtualFund.balance += Decimal(quantity) * stockprice.closeprice
+        virtualFund.save()
     return Response({"message": "Sell successfully"}, status=status.HTTP_200_OK)
 
 # @login_required(login_url='login')

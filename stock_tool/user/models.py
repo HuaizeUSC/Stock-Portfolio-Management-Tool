@@ -12,7 +12,7 @@ class Profile(models.Model):
     id = models.UUIDField(default=uuid.uuid4, unique=True,
                           primary_key=True, editable=False)
     email = models.EmailField(max_length=500, blank=True, null=True)
-    username = models.CharField(max_length=200,unique=True)
+    username = models.CharField(max_length=200, unique=True)
     created = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
@@ -21,8 +21,7 @@ class Profile(models.Model):
 
 class Trade(models.Model):
     user = models.ForeignKey(Profile, on_delete=models.CASCADE)
-    stockinfo = models.ForeignKey(
-        StockPrice, on_delete=models.CASCADE)
+    stockinfo = models.CharField(max_length=100, null=True, blank=True)
     timestamp = models.BigIntegerField(null=True, blank=True)
     price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     quantity = models.IntegerField()
@@ -33,7 +32,7 @@ class Trade(models.Model):
 
 class FavoriteStock(models.Model):
     user = models.ForeignKey(Profile, on_delete=models.CASCADE)
-    stock = models.ForeignKey(Stock, on_delete=models.CASCADE)
+    stock = models.CharField(max_length=100, null=True, blank=True)
 
     def __str__(self):
         return f'{str(self.owner.username)} favors {str(self.stock.symbol)}'
