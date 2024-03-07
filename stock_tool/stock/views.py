@@ -307,6 +307,7 @@ def stockPrice(request, symbol, timestamp):
         profile = Profile.objects.using(get_database(request.user.username)).get(username=request.user.username)
     else:
         profile = None
+    symbol = symbol.upper()
     db = get_database(symbol)
     stock = Stock.objects.using(db).get(symbol=symbol)
     stockprice = StockPrice.objects.using(db).get(stock=stock, timestamp=timestamp)
@@ -336,6 +337,7 @@ def stockPrice(request, symbol, timestamp):
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def favor(request, symbol):
+    symbol = symbol.upper()
     db = get_database(symbol)
     stock = Stock.objects.using(db).get(symbol=symbol)
     dbUser = get_database(request.user.username)
@@ -366,6 +368,7 @@ def favor(request, symbol):
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def buystock(request, symbol):
+    symbol = symbol.upper()
     db = get_database(symbol)
     stock = Stock.objects.using(db).get(symbol=symbol)
     dbUser = get_database(request.user.username)
@@ -389,6 +392,7 @@ def buystock(request, symbol):
 @authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def sellstock(request, symbol):
+    symbol = symbol.upper()
     db = get_database(symbol)
     stock = Stock.objects.using(db).get(symbol=symbol)
     dbUser = get_database(request.user.username)
