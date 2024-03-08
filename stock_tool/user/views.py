@@ -1,11 +1,12 @@
 import math
 
 from django.contrib.auth.models import User
-from django.db import transaction
 from django.shortcuts import render, redirect
 from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login, logout
+
+from stock.serializers import StockSerializer
 from .models import FavoriteStock, Profile, VirtualFunds, Trade
 from django.contrib import messages
 from stock.models import Stock
@@ -106,12 +107,11 @@ def logoutUser(request):
 @permission_classes([IsAuthenticated])
 def deleteFavor(request, symbol):
     db = get_database(symbol)
-    with transaction.atomic(using=db):
-        stock = Stock.objects.using(db).get(symbol=symbol)
     dbUser = get_database(request.user.username)
-    with transaction.atomic(using=dbUser):
-        user = Profile.objects.using(dbUser).get(username=request.user.username)
-        FavoriteStock.objects.using(dbUser).get(user=user, stock=symbol).delete()
+    user = Profile.objects.using(dbUser).get(username=request.user.username)
+    stock = Stock.objects.using(db).get(symbol=symbol)
+
+    FavoriteStock.objects.using(dbUser).get(user=user, stock=stock).delete()
     return Response({"message": "successfully delete this stock!"}, status=status.HTTP_200_OK)
 
 
@@ -126,11 +126,19 @@ def favors(request, pageNum, numPerPage):
         favors += list(FavoriteStock.objects.using(db).filter(user=profile))
     except:
         favors = []
+    favorStocks = []
+    for favor in favors:
+        tmpdb = get_database(favor.stock)
+        stock_info = Stock.objects.using(tmpdb).get(symbol=favor.stock)
+        favorStocks.append({'stockinfo': StockSerializer(stock_info).data})
     if pageNum * numPerPage > len(favors):
         favors = favors[(pageNum - 1) * numPerPage:]
+        favorStocks = favorStocks[(pageNum - 1) * numPerPage:]
     else:
         favors = favors[(pageNum - 1) * numPerPage:pageNum * numPerPage]
-    context = {'profile': ProfileSerializer(profile).data, 'favors': FavoriteStockSerializer(favors, many=True).data,
+        favorStocks = favorStocks[(pageNum - 1) *
+                                  numPerPage:pageNum * numPerPage]
+    context = {'profile': ProfileSerializer(profile).data, 'favors': favorStocks,
                'pageNum': math.ceil(len(favors) / numPerPage)}
     return Response(context, status=status.HTTP_200_OK)
 
@@ -142,7 +150,10 @@ def trades(request, pageNum, numPerPage):
     db = get_database(request.user.username)
     profile = Profile.objects.using(db).get(username=request.user.username)
     trades = []
-    trades += list(Trade.objects.using(db).filter(user=profile))
+    try:
+        trades += list(Trade.objects.using(db).filter(user=profile))
+    except:
+        trades = []
     if pageNum * numPerPage > len(trades):
         trades = trades[(pageNum - 1) * numPerPage:]
     else:
