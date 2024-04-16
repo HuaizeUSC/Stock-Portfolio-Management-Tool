@@ -2,6 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 
 import math
+from tracemalloc import start
 
 from django.db.models import Case, When, Exists, OuterRef, Value, BooleanField
 from rest_framework import status
@@ -13,6 +14,7 @@ from os import execv
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import IntegrityError, transaction
 from django.shortcuts import render, redirect
+
 from .models import Stock, StockPrice
 import requests
 from dateutil.relativedelta import relativedelta
@@ -121,6 +123,7 @@ def create_time_stamp(stock_model, st):
         existing_record.openprice = st['o']
         existing_record.closeprice = st['c']
         existing_record.save()
+
     except StockPrice.DoesNotExist:
         StockPrice.objects.using(db).create(
             stock=stock_model,
@@ -132,6 +135,12 @@ def create_time_stamp(stock_model, st):
         )
     except IntegrityError as e:
         print(f"IntegrityError: {e}")
+    finally:
+        stock_model.latestlowprice = Decimal(st['l'])
+        stock_model.latestopenprice = Decimal(st['o'])
+        stock_model.latestcloseprice = Decimal(st['c'])
+        stock_model.latesthighprice = Decimal(st['h'])
+        stock_model.save()
 
 
 def create_stock(symbol):
@@ -181,7 +190,8 @@ def create_stock(symbol):
 @authentication_classes([JWTAuthentication])
 def stocks(request, pageNum, numPerPage):
     if request.user.is_authenticated:
-        profile = Profile.objects.using(get_database(request.user.username)).get(username=request.user.username)
+        profile = Profile.objects.using(get_database(
+            request.user.username)).get(username=request.user.username)
     else:
         profile = None
     context = {'stocks': StockSerializer(get_combined_queryset(profile, pageNum, numPerPage), many=True).data,
@@ -224,7 +234,8 @@ def stocks(request, pageNum, numPerPage):
 def get_combined_queryset(profile, pageNum, numPerPage):
     global querysets
     querysets = []
-    favorite_stocks = list(FavoriteStock.objects.using(get_database(profile.username)).filter(user=profile))
+    favorite_stocks = list(FavoriteStock.objects.using(
+        get_database(profile.username)).filter(user=profile))
     for db in databases:
         # queryset = Stock.objects.using(db).annotate(
         #     favor=Case(
@@ -245,20 +256,35 @@ def get_combined_queryset(profile, pageNum, numPerPage):
 @authentication_classes([JWTAuthentication])
 def stock(request, symbol):
     if request.user.is_authenticated:
-        profile = Profile.objects.using(get_database(request.user.username)).get(username=request.user.username)
+        profile = Profile.objects.using(get_database(
+            request.user.username)).get(username=request.user.username)
     else:
         profile = None
     symbol = symbol.upper()
     try:
         db = get_database(symbol)
         stock = Stock.objects.using(db).get(symbol=symbol)
-        favorite_stock = FavoriteStock.objects.using(get_database(profile.username)).filter(user=profile,
-                                                                                            stock=symbol).exists()
+        favorite_stock = FavoriteStock.objects.using(get_database(
+            profile.username)).filter(user=profile, stock=symbol).exists()
+        timestamp = stock.latestupdatetime
+        if (timestamp):
+            startday = datetime.utcfromtimestamp(
+                timestamp//1000000000).strftime('%Y-%m-%d')
+            endday = datetime.now().strftime('%Y-%m-%d')
+            if (startday <= endday):
+                response_newstock = requests.get(
+                    url=f"https://api.polygon.io/v2/aggs/ticker/{stock.symbol}/range/1/day/{startday}/{endday}?adjusted=true&sort=asc&apiKey=7sDFU1hnKlUhRDSY7kKTmE4hMwrfpyLo"
+                )
+                if response_newstock.status_code == 200:
+                    aggregates = response_newstock.json()['results']
+                    for dayinfo in aggregates:
+                        create_time_stamp(stock, dayinfo)
         if favorite_stock:
             setattr(stock, 'favor', True)
         else:
             setattr(stock, 'favor', False)
-        stockPrice = StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp')
+        stockPrice = StockPrice.objects.using(db).filter(
+            stock=stock).order_by('-timestamp')
         context = {'stock': StockWithFavorSerializer(stock).data,
                    'stockPrice': StockPriceSerializer(stockPrice, many=True).data,
                    'profile': ProfileSerializer(profile).data}
@@ -268,7 +294,8 @@ def stock(request, symbol):
             db = get_database(symbol)
             stock = Stock.objects.using(db).get(symbol=symbol)
             setattr(stock, 'favor', False)
-            stockPrice = StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp')
+            stockPrice = StockPrice.objects.using(db).filter(
+                stock=stock).order_by('-timestamp')
             context = {'stock': StockWithFavorSerializer(stock).data,
                        'stockPrice': StockPriceSerializer(stockPrice, many=True).data,
                        'profile': ProfileSerializer(profile).data}
@@ -304,13 +331,15 @@ def stock(request, symbol):
 @authentication_classes([JWTAuthentication])
 def stockPrice(request, symbol, timestamp):
     if request.user.is_authenticated:
-        profile = Profile.objects.using(get_database(request.user.username)).get(username=request.user.username)
+        profile = Profile.objects.using(get_database(
+            request.user.username)).get(username=request.user.username)
     else:
         profile = None
     symbol = symbol.upper()
     db = get_database(symbol)
     stock = Stock.objects.using(db).get(symbol=symbol)
-    stockprice = StockPrice.objects.using(db).get(stock=stock, timestamp=timestamp)
+    stockprice = StockPrice.objects.using(
+        db).get(stock=stock, timestamp=timestamp)
     context = {'stockPrice': StockPriceSerializer(stockprice).data,
                'profile': ProfileSerializer(profile).data}
     return Response(context, status=status.HTTP_200_OK)
@@ -372,13 +401,16 @@ def buystock(request, symbol):
     db = get_database(symbol)
     with transaction.atomic(using=db):
         stock = Stock.objects.using(db).get(symbol=symbol)
-        stockprice = StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp').first()
+        stockprice = StockPrice.objects.using(db).filter(
+            stock=stock).order_by('-timestamp').first()
     dbUser = get_database(request.user.username)
     with transaction.atomic(using=dbUser):
-        profile = Profile.objects.using(dbUser).get(username=request.user.username)
+        profile = Profile.objects.using(dbUser).get(
+            username=request.user.username)
         quantity = request.data['quantity']
         try:
-            trade = Trade.objects.using(dbUser).get(user=profile, stockinfo=symbol)
+            trade = Trade.objects.using(dbUser).get(
+                user=profile, stockinfo=symbol)
             trade.quantity += Decimal(quantity)
             trade.timestamp = stockprice.timestamp
             trade.save()
@@ -400,10 +432,12 @@ def sellstock(request, symbol):
     db = get_database(symbol)
     with transaction.atomic(using=db):
         stock = Stock.objects.using(db).get(symbol=symbol)
-        stockprice = StockPrice.objects.using(db).filter(stock=stock).order_by('-timestamp').first()
+        stockprice = StockPrice.objects.using(db).filter(
+            stock=stock).order_by('-timestamp').first()
     dbUser = get_database(request.user.username)
     with transaction.atomic(using=dbUser):
-        profile = Profile.objects.using(dbUser).get(username=request.user.username)
+        profile = Profile.objects.using(dbUser).get(
+            username=request.user.username)
         trade = Trade.objects.using(dbUser).get(user=profile, stockinfo=symbol)
         quantity = request.data['quantity']
         trade.quantity -= Decimal(quantity)
