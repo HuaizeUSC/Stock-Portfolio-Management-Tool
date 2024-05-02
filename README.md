@@ -4,7 +4,7 @@ Huaize Ye yhz613609@gmail.com huaizeye@usc.edu
 Yuxuan Ren
 Haochen Li
 
-##### [Website deployed on Azure](https://purple-bush-0fbcbce1e.5.azurestaticapps.net/)
+##### [Website deployed on Azure](https://purple-bush-0fbcbce1e.5.azurestaticapps.net/#/register)
 ##### [Link to Frontend Repo](https://github.com/HuaizeUSC/stock-portfolio-frontend)
 
 Tech stack:React, Django, JavaScript, Python, Redux, Tailwind CSS, MySQL, Vite
