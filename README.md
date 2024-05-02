@@ -16,3 +16,29 @@ Tech stack:React, Django, JavaScript, Python, Redux, Tailwind CSS, MySQL, Vite
 4. Fetch Real Time Data from Polygon
 5. Distributed Store System Management
 6. Secure API with Authorization
+
+#### Backend
+##### Main File structure
+- /Stock-Protfolio-Management-Tool
+  - /stock_tool
+    - /stock (stock related files)
+    - /stock_tool (django setting files)
+    - /templates
+    - /user (user related files)
+    - db1.sqlite3
+    - db2.sqlite3
+    - db3.sqlite3
+    - db.bat
+  - .gitattributes
+
+#### Instruction
+1. Install Python & Django
+2. clone repo  
+`git clone https://github.com/HuaizeUSC/Stock-Portfolio-Management-Tool.git`
+3. Install dependencies  
+`cd stock_tool`  
+`pip install -r requirements.txt`  
+4. Migrate database  
+`./db.bat`
+5. Start backend server  
+`python manage.py runserver`
