@@ -1,8 +1,8 @@
 ### Stock Portfolio Management Tool Repo of Backend
 
 Huaize Ye yhz613609@gmail.com huaizeye@usc.edu
-Yuxuan Ren
-Haochen Li
+Yuxuan Ren yuxuanre@usc.edu
+Haochen Li sznxlhc0205@gmail.com hli61559@usc.edu
 
 ##### [Website deployed on Azure](https://purple-bush-0fbcbce1e.5.azurestaticapps.net/#/register)
 ##### [Link to Frontend Repo](https://github.com/HuaizeUSC/stock-portfolio-frontend)
